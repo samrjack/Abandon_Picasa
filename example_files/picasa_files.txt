@@ -1,0 +1,14 @@
+/mnt/c/Users/example_user/Documents/.picasa.ini
+/mnt/c/Users/example_user/Documents/Wild Flowers/.picasa.ini
+/mnt/c/Users/example_user/Documents/Images/.picasa.ini
+/mnt/c/Users/example_user/Documents/Images/.picasaoriginals/.picasa.ini
+/mnt/c/Users/example_user/Downloads/.picasa.ini
+/mnt/c/Users/example_user/Pictures/.picasa.ini
+/mnt/c/Users/example_user/Pictures/2001-01-19/.picasa.ini
+/mnt/c/Users/example_user/Pictures/2001-03-03/.picasa.ini
+/mnt/c/Users/example_user/Pictures/2001-06-19/.picasa.ini
+/mnt/c/Users/example_user/Pictures/2001-06-22/.picasa.ini
+/mnt/c/Users/example_user/Pictures/summer 2016/.picasaoriginals/.picasa.ini
+/mnt/c/Users/example_user/Pictures/Texas Star 2017/.picasa.ini
+/mnt/c/Users/example_user/Pictures/Untitled/.picasa.ini
+/mnt/c/Users/example_user/Pictures/Viking Summer 2017/SLR Pics/.picasa.ini
