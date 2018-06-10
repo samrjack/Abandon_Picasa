@@ -1,36 +1,58 @@
 #!/usr/bin/python3
 
-import fileinput
 import json
 import stat
 import os
-from jaraco.windows import filesystem
 
-'''
+from pathlib import Path
+
+def main():
+    pFiles   = findPicasaFiles()
+    albums   = findAlbums(pFiles)
+    pictures = findPictures(pFiles)
+    
+    print(pictures)
+
+def findAlbums(picasaFiles):
+    if os.path.exists(os.path.join('.', '.albums.json')):
+        #TODO read file
+        pass
+    else:
+        return __findAlbumsOnDisk(picasaFiles)
+
+def findPictures(picasaFiles):
+    if os.path.exists(os.path.join('.', '.pictures.json')):
+        #TODO read file
+        pass
+    else:
+        return __findPicturesOnDisk(picasaFiles)
+
+def findPicasaFiles():
+    pFiles = []
+    for root, dirs, files in os.walk(str(Path.home()), topdown=True):
+        dirs[:]  = [d for d in dirs  if not has_hidden_attribute(os.path.join(root,d))]
+        if ".picasa.ini" in files:
+            pFiles.append(os.path.join(root,".picasa.ini"))
+            
+    return pFiles
+    
+
+
 def has_hidden_attribute(filepath):
-    try:
-        print(os.stat(filepath))
-        return bool(os.stat(filepath).st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN)
-    except PermissionError:
-        return True
-'''
-def has_hidden_attribute(filepath):
-    return filesystem.GetFileAttributes(filepath).hidden
+    return bool(os.stat(filepath).st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN) or os.path.basename(filepath)[0] == '.'
 
-
-def makePictureJSON(picasaFiles):
+def __findPicturesOnDisk(picasaFiles):
     picture_formats = ["jpeg","tif","tif","bmp","gif","psd","png","tga","mpg","mod","mmv","tod","wmv","asf","avi","dvx","mov","m4v","3gp","3g2","mp4","m2t","m2ts","mts","mkv","avi","asf","wmv","mpg","m2t","m2ts","mts","mkv","avi","asf","wmv","mpg","m2t","mmv","m2ts","wma","mp3"]
 
     pictures = {}
 
-    for root, dirs, files in os.walk(os.path.abspath(os.sep), topdown=True):
+    for root, dirs, files in os.walk(Path.home(), topdown=True):
         files[:] = [f for f in files if not has_hidden_attribute(os.path.join(root,f))]
-        dirs[:]  = [d for d in dirs  if not has_hidden_attribute(os.path.join(root,d))]
+        dirs[:]  = [d for d in dirs  if not (d[0] == '.' or has_hidden_attribute(os.path.join(root,d)))]
         
         for fil in files:
             if fil.split('.')[-1] in picture_formats:
                 pictures[os.path.join(root, fil)] = {}
-                print(os.path.join(root, fil))
 
     for fileName in picasaFiles:
         directory = os.path.dirname(fileName)
@@ -77,9 +99,7 @@ def makePictureJSON(picasaFiles):
     # outFile.close()
     return pictures
 
-
-
-def makeAlbumJSON(picasaFiles):
+def __findAlbumsOnDisk(picasaFiles):
     albums = {}
     for fileName in picasaFiles:
         f = open(fileName.replace("\n",""), "r")
@@ -103,7 +123,7 @@ def makeAlbumJSON(picasaFiles):
             if not "token" in thisAlbum:
                 continue
             
-            tok = thisAlbum["token"];
+            tok = thisAlbum["token"]
             if not tok in albums:
                 albums[tok] = {}
 
@@ -112,21 +132,7 @@ def makeAlbumJSON(picasaFiles):
         # Finished reading metadata file
         f.close()
 
-    # outFile = open("album.json","w")
-    # outFile.write(json.dumps(albums))
-    # outFile.write(json.dumps(list(albums.values())))
-    # outFile.close()
     return albums
 
-def findPicasaFiles():
-    pFiles = []
-    for root, dirs, files in os.walk(os.path.abspath(os.sep), topdown=True):
-        if ".picasa.ini" in files:
-            pFiles.append(os.path.join(root,".picasa.ini")
-    return pFiles
-
-def main():
-    pFiles  = findPicasaFiles()
-    albums  = findAlbums(pFiles)
-    picturs = fildPictures(pFiles)
-    
+if __name__ == "__main__":
+    main()
