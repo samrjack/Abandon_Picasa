@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 import webbrowser
 import requests
+import copy
 import json
 import stat
 import os
 
+from time import sleep
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -16,36 +18,44 @@ def main():
     pictures = findPictures(pFiles)
     print("Total of", len(pictures), "pictures.")
     
+    print(pictures)
+
     tokens = get_tokens()
     access_token = tokens['access_token']
 
-    ret =  postAlbums(albums, access_token)
+    (ret, albums) =  postAlbums(albums, access_token)
     with open('.albums.json','w') as f:
         f.write(json.dumps(albums))
     if ret < 0:
         print("Try again later: albums didn't complete")
         return
 
-    ret =  postPictures(pictures, albums, access_token)
+    (ret, pictures) =  postPictures(pictures, albums, access_token)
     
     if ret < 0:
         with open('.pictures.json','w') as f:
             f.write(json.dumps(pictures))
         print("Try again later: pictures didn't complete")
         return
+    try:
+        os.remove(".albums.json")
+        os.remove(".pictures.json")
+    except:
+        pass
+    
     print("done")
 
 def findAlbums(picasaFiles):
-    if os.path.exists(os.path.join('.', '.albums.json')):
+    if os.path.exists('.albums.json'):
         with open(os.path.join('.','.albums.json'),'r') as f:
             return json.load(f)
     else:
         return __findAlbumsOnDisk(picasaFiles)
 
 def findPictures(picasaFiles):
-    if os.path.exists(os.path.join('.', '.pictures.json')):
-        #TODO read file
-        pass
+    if os.path.exists('.pictures.json'):
+        with open(os.path.join('.','.pictures.json'),'r') as f:
+            return json.load(f)
     else:
         return __findPicturesOnDisk(picasaFiles)
 
@@ -65,12 +75,13 @@ def postAlbums(albums, access_token):
             if r.status_code != requests.codes.ok:
                 with open("error.log", "w") as f:
                     f.write(r.text)
-                return -1
+                return (-1, albums)
             
             albums[token]["google_photos_id"] = r.json()["id"]
-    return 1
+    return (1, albums)
 
 def postAlbum(album_name, access_token):
+    sleep(10)
     base_url = "https://photoslibrary.googleapis.com/v1/albums"
     headers = {
         "Content-type" : "application/json",
@@ -81,12 +92,19 @@ def postAlbum(album_name, access_token):
     return r
 
 def postPictures(pictures, albums, access_token):
+    
+    print("pictures in pictures:", pictures)
+    print("\n")
+    
+    remaining_pics = copy.deepcopy(pictures)
+
     for picture in pictures:
+        print("Posting: %s" % picture["path"])
         r = postPicture(picture, access_token)
         if r.status_code != requests.codes.ok:
             with open("error.log", "w") as f:
                 f.write(r.text)
-            return -1
+            return (-1, remaining_pics)
         google_token = r.text
 
         if "albums" not in picture:
@@ -94,14 +112,14 @@ def postPictures(pictures, albums, access_token):
             if r.status_code != requests.codes.ok:
                 with open("error.log", "w") as f:
                     f.write(r.text)
-                return -1
-            pictures.remove(picture)
+                return (-1, remaining_pics)
+            remaining_pics.remove(picture)
         else:
             if postPictureAlbums(picture, albums, access_token, google_token) < 0:
-                return -1
-            pictures.remove(picture)
-    return 1
-            
+                return (-1, remaining_pics)
+            remaining_pics.remove(picture)
+    print(pictures)
+    return (1, remaining_pics)      
 
 def postPicture(picture, access_token):
     base_url = "https://photoslibrary.googleapis.com/v1/uploads"
@@ -112,10 +130,10 @@ def postPicture(picture, access_token):
     }
     body = open(picture['path'], 'rb')
     r = requests.post(url=base_url, headers=headers, data=body)
-    print(picture["path"] + ": " + r.text)
     return r
 
 def noAlbums(picture, google_token, access_token):
+    sleep(5)
     base_url = "https://photoslibrary.googleapis.com/v1/mediaItems:batchCreate"
     headers = {
         "Content-type" : "application/json",
@@ -133,6 +151,7 @@ def noAlbums(picture, google_token, access_token):
     return r
 
 def postPictureAlbums(picture, albums, access_token, google_token):
+    sleep(5)
     if "albums" not in picture:
         return 1
 
@@ -206,7 +225,7 @@ def has_hidden_attribute(filepath):
     return bool(os.stat(filepath).st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN) or os.path.basename(filepath)[0] == '.'
 
 def __findPicturesOnDisk(picasaFiles):
-    picture_formats = ["jpeg","tif","tif","bmp","gif","psd","png","tga","mpg","mod","mmv","tod","wmv","asf","avi","dvx","mov","m4v","3gp","3g2","mp4","m2t","m2ts","mts","mkv","avi","asf","wmv","mpg","m2t","m2ts","mts","mkv","avi","asf","wmv","mpg","m2t","mmv","m2ts","wma","mp3"]
+    picture_formats = ["jpeg","jpg","tif","tif","bmp","gif","psd","png","tga","mpg","mod","mmv","tod","wmv","asf","avi","dvx","mov","m4v","3gp","3g2","mp4","m2t","m2ts","mts","mkv","avi","asf","wmv","mpg","m2t","m2ts","mts","mkv","avi","asf","wmv","mpg","m2t","mmv","m2ts","wma","mp3"]
 
     pictures = {}
 
@@ -215,7 +234,7 @@ def __findPicturesOnDisk(picasaFiles):
         dirs[:]  = [d for d in dirs  if not (d[0] == '.' or has_hidden_attribute(os.path.join(root,d)))]
         
         for fil in files:
-            if fil.split('.')[-1] in picture_formats:
+            if fil.split('.')[-1].lower() in picture_formats:
                 pictures[os.path.join(root, fil)] = {}
 
     for fileName in picasaFiles:
@@ -229,7 +248,7 @@ def __findPicturesOnDisk(picasaFiles):
                 line = f.readline()
                 continue
             
-            path = directory + "/" + line.replace("\n", "").replace("[","").replace("]","")
+            path = os.path.join(directory, line.replace("\n", "").replace("[","").replace("]",""))
             if path not in pictures:
                 if os.path.exists(path):
                     pictures[path] = {}
