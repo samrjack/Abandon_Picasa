@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 import webbrowser
 import requests
+import piexif
 import copy
 import json
 import stat
 import os
 
+from PIL import Image
 from time import sleep
 from pathlib import Path
 from urllib.parse import urlencode
@@ -141,7 +143,7 @@ def noAlbums(picture, google_token, access_token):
     }
     body = {
         "newMediaItems" : [{
-            "description" : "",
+            "description" : picture["description"],
             "simpleMediaItem" : {
                 "uploadToken" : google_token
             }
@@ -164,7 +166,7 @@ def postPictureAlbums(picture, albums, access_token, google_token):
         body = {
             "albumId" : albums[album]["google_photos_id"],
             "newMediaItems" : [{
-                "description" : "",
+                "description" : picture["description"],
                 "simpleMediaItem" : {
                     "uploadToken" : google_token
                 }
@@ -235,7 +237,12 @@ def __findPicturesOnDisk(picasaFiles):
         
         for fil in files:
             if fil.split('.')[-1].lower() in picture_formats:
-                pictures[os.path.join(root, fil)] = {}
+                try:
+                    img = Image.open(os.path.join(root, fil))
+                    exif_dict = piexif.load(img.info['exif'])
+                    pictures[os.path.join(root, fil)] = {"description":exif_dict['0th'][270].decode("utf-8")}
+                except:
+                    pictures[os.path.join(root, fil)] = {"description":""}
 
     for fileName in picasaFiles:
         directory = os.path.dirname(fileName)
